@@ -1,0 +1,2 @@
+# konomi
+konomi build spec
