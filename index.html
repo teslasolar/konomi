@@ -1,0 +1,644 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Konomi System</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+</head>
+<body>
+  <header>
+    <h1><span class="icon">&#x1F9EC;</span> KONOMI SYSTEM</h1>
+    <div class="status-bar">
+      <div class="status-item">
+        <span>eVGPU</span>
+        <span class="value" id="cpu-cores">-</span>
+      </div>
+      <div class="status-item">
+        <span>Arrays</span>
+        <span class="value" id="array-count">0</span>
+      </div>
+      <div class="status-item">
+        <span>Cubes</span>
+        <span class="value" id="cube-count">0</span>
+      </div>
+      <div class="status-item">
+        <span>Ops</span>
+        <span class="value" id="op-count">0</span>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <!-- Sidebar Navigation -->
+    <aside class="sidebar">
+      <h2>Components</h2>
+      <div class="nav-item active" data-view="dashboard">
+        <span>&#x1F4CA;</span> Dashboard
+      </div>
+      <div class="nav-item" data-view="blockarray">
+        <span>&#x1F9CA;</span> BlockArrays
+      </div>
+      <div class="nav-item" data-view="cubes">
+        <span>&#x1F3B2;</span> Cubes
+      </div>
+      <div class="nav-item" data-view="evgpu">
+        <span>&#x26A1;</span> eVGPU
+      </div>
+      <div class="nav-item" data-view="llm">
+        <span>&#x1F9E0;</span> FemtoLLM
+      </div>
+
+      <h2 style="margin-top: 1.5rem;">Actions</h2>
+      <div class="nav-item" id="btn-demo">
+        <span>&#x1F680;</span> Run Demo
+      </div>
+      <div class="nav-item" id="btn-save">
+        <span>&#x1F4BE;</span> Save State
+      </div>
+      <div class="nav-item" id="btn-load">
+        <span>&#x1F4C2;</span> Load State
+      </div>
+      <div class="nav-item" id="btn-export">
+        <span>&#x1F4E4;</span> Export Files
+      </div>
+      <div class="nav-item" id="btn-reset">
+        <span>&#x1F504;</span> Reset
+      </div>
+    </aside>
+
+    <!-- Main Canvas Area -->
+    <section class="canvas-area">
+      <div class="canvas-header">
+        <h2 id="view-title">Dashboard</h2>
+        <div class="canvas-controls">
+          <button class="btn btn-icon btn-secondary" id="btn-zoom-in" title="Zoom In">+</button>
+          <button class="btn btn-icon btn-secondary" id="btn-zoom-out" title="Zoom Out">-</button>
+          <button class="btn btn-icon btn-secondary" id="btn-reset-view" title="Reset View">&#x21BB;</button>
+        </div>
+      </div>
+      <div id="visualization">
+        <canvas id="canvas"></canvas>
+      </div>
+    </section>
+
+    <!-- Info Panel -->
+    <aside class="info-panel">
+      <div class="info-section">
+        <h3>System Stats</h3>
+        <div class="stats-grid">
+          <div class="stat">
+            <div class="stat-label">Uptime</div>
+            <div class="stat-value" id="stat-uptime">0s</div>
+          </div>
+          <div class="stat">
+            <div class="stat-label">Avg Op Time</div>
+            <div class="stat-value" id="stat-avg-time">0ms</div>
+          </div>
+          <div class="stat">
+            <div class="stat-label">Memory</div>
+            <div class="stat-value" id="stat-memory">-</div>
+          </div>
+          <div class="stat">
+            <div class="stat-label">Active LLMs</div>
+            <div class="stat-value" id="stat-llms">0</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="info-section">
+        <h3>Selected Cube</h3>
+        <div class="cube-viz" id="cube-viz">
+          <div class="vertex" data-v="NWU">NWU</div>
+          <div class="vertex" data-v="NEU">NEU</div>
+          <div class="vertex" data-v=""></div>
+          <div class="vertex" data-v="NWD">NWD</div>
+          <div class="vertex central" data-v="CENTRAL">C</div>
+          <div class="vertex" data-v="NED">NED</div>
+          <div class="vertex" data-v="SWU">SWU</div>
+          <div class="vertex" data-v="SEU">SEU</div>
+          <div class="vertex" data-v=""></div>
+          <div class="vertex" data-v="SWD">SWD</div>
+          <div class="vertex" data-v="SED">SED</div>
+          <div class="vertex" data-v=""></div>
+        </div>
+        <div style="margin-top: 0.5rem;">
+          <input type="text" id="llm-input" placeholder="Enter text to process...">
+          <button class="btn btn-primary" id="btn-process" style="margin-top: 0.5rem; width: 100%;">Process</button>
+        </div>
+      </div>
+
+      <div class="info-section">
+        <h3>Console</h3>
+        <div class="console" id="console">
+          <div class="console-line info">[INIT] Konomi System starting...</div>
+        </div>
+      </div>
+    </aside>
+  </main>
+
+  <script type="module">
+    import { konomi, evgpu, FemtoLLM, BlockArray, Cube } from './js/konomi.js';
+
+    // DOM Elements
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    const consoleEl = document.getElementById('console');
+
+    // State
+    let currentView = 'dashboard';
+    let selectedCube = null;
+    let selectedVertex = null;
+    let zoom = 1;
+    let pan = { x: 0, y: 0 };
+
+    // Logging
+    function log(msg, type = 'info') {
+      const line = document.createElement('div');
+      line.className = `console-line ${type}`;
+      line.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
+      consoleEl.appendChild(line);
+      consoleEl.scrollTop = consoleEl.scrollHeight;
+    }
+
+    // Update stats display
+    function updateStats() {
+      const stats = konomi.getStats();
+
+      document.getElementById('cpu-cores').textContent = `${stats.evgpu.cores} cores`;
+      document.getElementById('array-count').textContent = stats.blockArrays;
+      document.getElementById('cube-count').textContent = stats.cubes;
+      document.getElementById('op-count').textContent = stats.operations;
+
+      document.getElementById('stat-uptime').textContent = `${Math.floor(stats.uptime / 1000)}s`;
+      document.getElementById('stat-avg-time').textContent = `${stats.avgOperationTime.toFixed(2)}ms`;
+
+      // Memory estimate
+      if (performance.memory) {
+        const mb = (performance.memory.usedJSHeapSize / 1024 / 1024).toFixed(1);
+        document.getElementById('stat-memory').textContent = `${mb}MB`;
+      }
+
+      // Count LLMs
+      let llmCount = 0;
+      for (const [_, ba] of konomi.blockArrays) {
+        llmCount += ba.llms.size;
+      }
+      document.getElementById('stat-llms').textContent = llmCount;
+    }
+
+    // Resize canvas
+    function resizeCanvas() {
+      const rect = canvas.parentElement.getBoundingClientRect();
+      canvas.width = rect.width;
+      canvas.height = rect.height;
+      render();
+    }
+
+    // Render visualization
+    function render() {
+      ctx.fillStyle = '#0a0a0f';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      ctx.save();
+      ctx.translate(canvas.width / 2 + pan.x, canvas.height / 2 + pan.y);
+      ctx.scale(zoom, zoom);
+
+      switch (currentView) {
+        case 'dashboard':
+          renderDashboard();
+          break;
+        case 'blockarray':
+          renderBlockArray();
+          break;
+        case 'cubes':
+          renderCubes();
+          break;
+        case 'evgpu':
+          renderEVGPU();
+          break;
+        case 'llm':
+          renderLLM();
+          break;
+      }
+
+      ctx.restore();
+    }
+
+    // Dashboard view
+    function renderDashboard() {
+      const centerX = 0;
+      const centerY = 0;
+
+      // Draw Konomi logo/system
+      ctx.strokeStyle = '#6366f1';
+      ctx.lineWidth = 2;
+
+      // Outer ring
+      ctx.beginPath();
+      ctx.arc(centerX, centerY, 150, 0, Math.PI * 2);
+      ctx.stroke();
+
+      // Inner elements
+      ctx.fillStyle = '#818cf8';
+      ctx.font = '24px JetBrains Mono';
+      ctx.textAlign = 'center';
+      ctx.fillText('KONOMI', centerX, centerY - 20);
+
+      ctx.fillStyle = '#64748b';
+      ctx.font = '12px JetBrains Mono';
+      ctx.fillText(`${konomi.blockArrays.size} Arrays | ${konomi.cubes.size} Cubes`, centerX, centerY + 10);
+      ctx.fillText(`eVGPU: ${evgpu.cores} cores`, centerX, centerY + 30);
+
+      // Draw orbiting cubes
+      const time = Date.now() / 1000;
+      for (let i = 0; i < 8; i++) {
+        const angle = (i / 8) * Math.PI * 2 + time * 0.5;
+        const x = centerX + Math.cos(angle) * 100;
+        const y = centerY + Math.sin(angle) * 100;
+
+        ctx.fillStyle = '#6366f1';
+        ctx.fillRect(x - 8, y - 8, 16, 16);
+      }
+    }
+
+    // BlockArray view
+    function renderBlockArray() {
+      const ba = konomi.blockArrays.values().next().value;
+      if (!ba) {
+        ctx.fillStyle = '#64748b';
+        ctx.font = '16px JetBrains Mono';
+        ctx.textAlign = 'center';
+        ctx.fillText('No BlockArray created', 0, 0);
+        ctx.fillText('Click "Run Demo" to create one', 0, 25);
+        return;
+      }
+
+      // Render 2D slice of the array
+      const cellSize = 20;
+      const dims = ba.dims;
+      const offsetX = -(dims[0] * cellSize) / 2;
+      const offsetY = -(dims[1] * cellSize) / 2;
+
+      ctx.fillStyle = '#64748b';
+      ctx.font = '12px JetBrains Mono';
+      ctx.textAlign = 'center';
+      ctx.fillText(`BlockArray: ${ba.id} (${dims.join('x')})`, 0, offsetY - 20);
+
+      for (let x = 0; x < Math.min(dims[0], 20); x++) {
+        for (let y = 0; y < Math.min(dims[1], 20); y++) {
+          const px = offsetX + x * cellSize;
+          const py = offsetY + y * cellSize;
+
+          const value = ba.get(x, y, 0);
+          const hasLLM = ba.llms.has(ba._key(x, y, 0));
+
+          if (hasLLM) {
+            ctx.fillStyle = '#10b981';
+          } else if (value > 0) {
+            ctx.fillStyle = `rgba(99, 102, 241, ${value})`;
+          } else {
+            ctx.fillStyle = '#1a1a25';
+          }
+
+          ctx.fillRect(px, py, cellSize - 2, cellSize - 2);
+        }
+      }
+    }
+
+    // Cubes view
+    function renderCubes() {
+      const cubes = Array.from(konomi.cubes.values());
+      if (cubes.length === 0) {
+        ctx.fillStyle = '#64748b';
+        ctx.font = '16px JetBrains Mono';
+        ctx.textAlign = 'center';
+        ctx.fillText('No Cubes created', 0, 0);
+        return;
+      }
+
+      const size = 60;
+      const cols = Math.ceil(Math.sqrt(cubes.length));
+      const startX = -((cols - 1) * size * 1.5) / 2;
+      const startY = -((Math.ceil(cubes.length / cols) - 1) * size * 1.5) / 2;
+
+      cubes.forEach((cube, i) => {
+        const col = i % cols;
+        const row = Math.floor(i / cols);
+        const x = startX + col * size * 1.5;
+        const y = startY + row * size * 1.5;
+
+        // Draw cube
+        ctx.strokeStyle = cube === selectedCube ? '#10b981' : '#6366f1';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(x - size / 2, y - size / 2, size, size);
+
+        // Draw vertices
+        const verts = [[-1, -1], [1, -1], [-1, 1], [1, 1]];
+        verts.forEach(([vx, vy]) => {
+          ctx.fillStyle = '#818cf8';
+          ctx.beginPath();
+          ctx.arc(x + vx * size / 3, y + vy * size / 3, 4, 0, Math.PI * 2);
+          ctx.fill();
+        });
+
+        // Central
+        ctx.fillStyle = '#f59e0b';
+        ctx.beginPath();
+        ctx.arc(x, y, 6, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Label
+        ctx.fillStyle = '#64748b';
+        ctx.font = '10px JetBrains Mono';
+        ctx.textAlign = 'center';
+        ctx.fillText(cube.id, x, y + size / 2 + 15);
+      });
+    }
+
+    // eVGPU view
+    function renderEVGPU() {
+      ctx.fillStyle = '#818cf8';
+      ctx.font = '20px JetBrains Mono';
+      ctx.textAlign = 'center';
+      ctx.fillText('eVGPU - Electronic Virtual GPU', 0, -100);
+
+      ctx.fillStyle = '#64748b';
+      ctx.font = '14px JetBrains Mono';
+      ctx.fillText(`CPU Cores: ${evgpu.cores}`, 0, -60);
+      ctx.fillText(`Operations: ${evgpu.stats.ops}`, 0, -40);
+
+      // Draw matrix visualization
+      const matSize = 4;
+      const cellSize = 30;
+      const startX = -cellSize * matSize - 40;
+      const startY = 20;
+
+      // Matrix A
+      ctx.fillStyle = '#64748b';
+      ctx.fillText('A', startX + cellSize * matSize / 2, startY - 10);
+      for (let i = 0; i < matSize; i++) {
+        for (let j = 0; j < matSize; j++) {
+          ctx.fillStyle = `hsl(240, 70%, ${30 + Math.random() * 30}%)`;
+          ctx.fillRect(startX + j * cellSize, startY + i * cellSize, cellSize - 2, cellSize - 2);
+        }
+      }
+
+      // @ symbol
+      ctx.fillStyle = '#f59e0b';
+      ctx.font = '24px JetBrains Mono';
+      ctx.fillText('@', 0, startY + cellSize * 2);
+
+      // Matrix B
+      const startX2 = 40;
+      ctx.fillStyle = '#64748b';
+      ctx.font = '14px JetBrains Mono';
+      ctx.fillText('B', startX2 + cellSize * matSize / 2, startY - 10);
+      for (let i = 0; i < matSize; i++) {
+        for (let j = 0; j < matSize; j++) {
+          ctx.fillStyle = `hsl(160, 70%, ${30 + Math.random() * 30}%)`;
+          ctx.fillRect(startX2 + j * cellSize, startY + i * cellSize, cellSize - 2, cellSize - 2);
+        }
+      }
+    }
+
+    // LLM view
+    function renderLLM() {
+      ctx.fillStyle = '#818cf8';
+      ctx.font = '20px JetBrains Mono';
+      ctx.textAlign = 'center';
+      ctx.fillText('FemtoLLM - 16-dim Nano Model', 0, -120);
+
+      ctx.fillStyle = '#64748b';
+      ctx.font = '12px JetBrains Mono';
+      ctx.fillText('Hidden Size: 16 | Vocab: 256 | Seq: 64', 0, -90);
+
+      // Draw network visualization
+      const layers = [16, 64, 16];
+      const layerSpacing = 100;
+      const startX = -layerSpacing;
+
+      layers.forEach((neurons, layerIdx) => {
+        const x = startX + layerIdx * layerSpacing;
+        const neuronSpacing = Math.min(20, 200 / neurons);
+        const startY = -(neurons * neuronSpacing) / 2;
+
+        for (let i = 0; i < Math.min(neurons, 16); i++) {
+          const y = startY + i * neuronSpacing;
+
+          // Draw connections
+          if (layerIdx < layers.length - 1) {
+            const nextNeurons = Math.min(layers[layerIdx + 1], 16);
+            const nextSpacing = Math.min(20, 200 / layers[layerIdx + 1]);
+            const nextStartY = -(nextNeurons * nextSpacing) / 2;
+
+            ctx.strokeStyle = 'rgba(99, 102, 241, 0.1)';
+            ctx.lineWidth = 1;
+            for (let j = 0; j < nextNeurons; j++) {
+              ctx.beginPath();
+              ctx.moveTo(x + 8, y);
+              ctx.lineTo(x + layerSpacing - 8, nextStartY + j * nextSpacing);
+              ctx.stroke();
+            }
+          }
+
+          // Draw neuron
+          ctx.fillStyle = '#6366f1';
+          ctx.beginPath();
+          ctx.arc(x, y, 6, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        // Layer label
+        ctx.fillStyle = '#64748b';
+        ctx.font = '10px JetBrains Mono';
+        ctx.fillText(['Input', 'Hidden', 'Output'][layerIdx], x, 100);
+      });
+    }
+
+    // Navigation
+    document.querySelectorAll('.nav-item[data-view]').forEach(item => {
+      item.addEventListener('click', () => {
+        document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+        item.classList.add('active');
+        currentView = item.dataset.view;
+        document.getElementById('view-title').textContent =
+          item.textContent.trim().split(' ').slice(1).join(' ');
+        render();
+      });
+    });
+
+    // Action buttons
+    document.getElementById('btn-demo').addEventListener('click', async () => {
+      log('Creating demo setup...', 'info');
+      try {
+        await konomi.createDemo();
+        log('Demo created: 10x10x10 BlockArray + 27 Cubes', 'success');
+        selectedCube = konomi.cubes.values().next().value;
+        updateStats();
+        render();
+      } catch (e) {
+        log(`Error: ${e.message}`, 'error');
+      }
+    });
+
+    document.getElementById('btn-save').addEventListener('click', async () => {
+      log('Saving state...', 'info');
+      try {
+        await konomi.saveState();
+        log('State saved to IndexedDB', 'success');
+      } catch (e) {
+        log(`Error: ${e.message}`, 'error');
+      }
+    });
+
+    document.getElementById('btn-load').addEventListener('click', async () => {
+      log('Loading state...', 'info');
+      try {
+        const state = await konomi.loadState();
+        if (state) {
+          log(`Loaded: ${state.blockArrays.length} arrays, ${state.cubes.length} cubes`, 'success');
+          updateStats();
+          render();
+        } else {
+          log('No saved state found', 'warning');
+        }
+      } catch (e) {
+        log(`Error: ${e.message}`, 'error');
+      }
+    });
+
+    document.getElementById('btn-export').addEventListener('click', () => {
+      const files = konomi.exportStaticFiles();
+      log(`Generated ${files.length} static files`, 'success');
+
+      // Download as JSON
+      const blob = new Blob([JSON.stringify(files, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'konomi_export.json';
+      a.click();
+      URL.revokeObjectURL(url);
+    });
+
+    document.getElementById('btn-reset').addEventListener('click', async () => {
+      if (confirm('Reset all data?')) {
+        await konomi.reset();
+        log('System reset', 'warning');
+        updateStats();
+        render();
+      }
+    });
+
+    // Zoom controls
+    document.getElementById('btn-zoom-in').addEventListener('click', () => {
+      zoom = Math.min(zoom * 1.2, 5);
+      render();
+    });
+
+    document.getElementById('btn-zoom-out').addEventListener('click', () => {
+      zoom = Math.max(zoom / 1.2, 0.2);
+      render();
+    });
+
+    document.getElementById('btn-reset-view').addEventListener('click', () => {
+      zoom = 1;
+      pan = { x: 0, y: 0 };
+      render();
+    });
+
+    // Cube vertex interaction
+    document.querySelectorAll('.vertex').forEach(v => {
+      v.addEventListener('click', () => {
+        const vertex = v.dataset.v;
+        if (!vertex) return;
+
+        document.querySelectorAll('.vertex').forEach(el => el.classList.remove('active'));
+        v.classList.add('active');
+        selectedVertex = vertex;
+        log(`Selected vertex: ${vertex}`, 'info');
+      });
+    });
+
+    // LLM Processing
+    document.getElementById('btn-process').addEventListener('click', async () => {
+      const input = document.getElementById('llm-input').value.trim();
+      if (!input) return;
+
+      if (!selectedCube) {
+        log('No cube selected - run demo first', 'warning');
+        return;
+      }
+
+      const vertex = selectedVertex || 'CENTRAL';
+      log(`Processing at ${selectedCube.id}:${vertex}...`, 'info');
+
+      try {
+        const result = await selectedCube.processVertex(vertex, input);
+        log(`Result: ${result.slice(0, 50)}...`, 'success');
+        updateStats();
+      } catch (e) {
+        log(`Error: ${e.message}`, 'error');
+      }
+    });
+
+    // Canvas interaction
+    let isDragging = false;
+    let lastPos = { x: 0, y: 0 };
+
+    canvas.addEventListener('mousedown', (e) => {
+      isDragging = true;
+      lastPos = { x: e.clientX, y: e.clientY };
+    });
+
+    canvas.addEventListener('mousemove', (e) => {
+      if (!isDragging) return;
+      pan.x += e.clientX - lastPos.x;
+      pan.y += e.clientY - lastPos.y;
+      lastPos = { x: e.clientX, y: e.clientY };
+      render();
+    });
+
+    canvas.addEventListener('mouseup', () => isDragging = false);
+    canvas.addEventListener('mouseleave', () => isDragging = false);
+
+    canvas.addEventListener('wheel', (e) => {
+      e.preventDefault();
+      const delta = e.deltaY > 0 ? 0.9 : 1.1;
+      zoom = Math.max(0.2, Math.min(5, zoom * delta));
+      render();
+    });
+
+    // Initialize
+    async function init() {
+      await konomi.init();
+      log('System initialized', 'success');
+
+      // Event listeners
+      konomi.on('blockarray:create', (d) => log(`BlockArray created: ${d.id}`, 'success'));
+      konomi.on('cube:create', (d) => log(`Cube created: ${d.id}`, 'success'));
+      konomi.on('cube:place', (d) => log(`Cube placed at ${d.x},${d.y},${d.z}`, 'info'));
+
+      resizeCanvas();
+      window.addEventListener('resize', resizeCanvas);
+
+      // Stats update loop
+      setInterval(updateStats, 1000);
+      updateStats();
+
+      // Try to load existing state
+      const state = await konomi.loadState();
+      if (state) {
+        log(`Restored: ${state.blockArrays.length} arrays, ${state.cubes.length} cubes`, 'info');
+        selectedCube = konomi.cubes.values().next().value;
+        render();
+      }
+    }
+
+    init();
+  </script>
+</body>
+</html>

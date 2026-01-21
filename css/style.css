@@ -1,0 +1,414 @@
+/* Konomi System - UI Styles */
+
+:root {
+  --bg-dark: #0a0a0f;
+  --bg-card: #12121a;
+  --bg-hover: #1a1a25;
+  --accent: #6366f1;
+  --accent-light: #818cf8;
+  --text: #e2e8f0;
+  --text-dim: #64748b;
+  --success: #10b981;
+  --warning: #f59e0b;
+  --error: #ef4444;
+  --border: #2d2d3a;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  background: var(--bg-dark);
+  color: var(--text);
+  min-height: 100vh;
+  line-height: 1.6;
+}
+
+/* Header */
+header {
+  background: var(--bg-card);
+  border-bottom: 1px solid var(--border);
+  padding: 1rem 2rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+header h1 {
+  font-size: 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+header h1 .icon {
+  font-size: 1.8rem;
+}
+
+.status-bar {
+  display: flex;
+  gap: 1rem;
+  font-size: 0.85rem;
+}
+
+.status-item {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  color: var(--text-dim);
+}
+
+.status-item .value {
+  color: var(--accent-light);
+}
+
+/* Main Layout */
+main {
+  display: grid;
+  grid-template-columns: 250px 1fr 300px;
+  gap: 1rem;
+  padding: 1rem;
+  height: calc(100vh - 60px);
+}
+
+/* Sidebar */
+.sidebar {
+  background: var(--bg-card);
+  border-radius: 8px;
+  padding: 1rem;
+  overflow-y: auto;
+}
+
+.sidebar h2 {
+  font-size: 0.9rem;
+  color: var(--text-dim);
+  margin-bottom: 1rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.nav-item {
+  padding: 0.75rem 1rem;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.2s;
+  margin-bottom: 0.25rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.nav-item:hover {
+  background: var(--bg-hover);
+}
+
+.nav-item.active {
+  background: var(--accent);
+  color: white;
+}
+
+/* Canvas Area */
+.canvas-area {
+  background: var(--bg-card);
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+}
+
+.canvas-header {
+  padding: 1rem;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.canvas-header h2 {
+  font-size: 1rem;
+}
+
+.canvas-controls {
+  display: flex;
+  gap: 0.5rem;
+}
+
+#visualization {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+}
+
+#visualization canvas {
+  width: 100%;
+  height: 100%;
+}
+
+/* Info Panel */
+.info-panel {
+  background: var(--bg-card);
+  border-radius: 8px;
+  padding: 1rem;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.info-section {
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 1rem;
+}
+
+.info-section:last-child {
+  border-bottom: none;
+}
+
+.info-section h3 {
+  font-size: 0.85rem;
+  color: var(--text-dim);
+  margin-bottom: 0.5rem;
+  text-transform: uppercase;
+}
+
+/* Stats Grid */
+.stats-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+}
+
+.stat {
+  background: var(--bg-hover);
+  padding: 0.5rem;
+  border-radius: 4px;
+}
+
+.stat-label {
+  font-size: 0.7rem;
+  color: var(--text-dim);
+}
+
+.stat-value {
+  font-size: 1.1rem;
+  color: var(--accent-light);
+}
+
+/* Buttons */
+.btn {
+  padding: 0.5rem 1rem;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 0.85rem;
+  transition: all 0.2s;
+}
+
+.btn-primary {
+  background: var(--accent);
+  color: white;
+}
+
+.btn-primary:hover {
+  background: var(--accent-light);
+}
+
+.btn-secondary {
+  background: var(--bg-hover);
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+
+.btn-secondary:hover {
+  background: var(--border);
+}
+
+.btn-icon {
+  padding: 0.5rem;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Console */
+.console {
+  background: #000;
+  border-radius: 6px;
+  padding: 0.75rem;
+  font-size: 0.8rem;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.console-line {
+  margin-bottom: 0.25rem;
+}
+
+.console-line.info { color: var(--text-dim); }
+.console-line.success { color: var(--success); }
+.console-line.warning { color: var(--warning); }
+.console-line.error { color: var(--error); }
+
+/* Input */
+input, textarea {
+  background: var(--bg-hover);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.5rem 0.75rem;
+  color: var(--text);
+  font-family: inherit;
+  font-size: 0.85rem;
+  width: 100%;
+}
+
+input:focus, textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+/* Cube Visualization */
+.cube-viz {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 4px;
+  padding: 0.5rem;
+  background: var(--bg-hover);
+  border-radius: 6px;
+}
+
+.vertex {
+  aspect-ratio: 1;
+  background: var(--border);
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.6rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.vertex:hover {
+  background: var(--accent);
+  transform: scale(1.1);
+}
+
+.vertex.active {
+  background: var(--success);
+}
+
+.vertex.central {
+  background: var(--accent);
+}
+
+/* BlockArray Grid */
+.block-grid {
+  display: grid;
+  gap: 2px;
+  background: var(--bg-hover);
+  padding: 0.5rem;
+  border-radius: 6px;
+}
+
+.block-cell {
+  aspect-ratio: 1;
+  background: var(--border);
+  border-radius: 2px;
+  transition: all 0.2s;
+}
+
+.block-cell.active {
+  background: var(--accent);
+}
+
+.block-cell:hover {
+  transform: scale(1.2);
+  z-index: 1;
+}
+
+/* Modal */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal {
+  background: var(--bg-card);
+  border-radius: 12px;
+  padding: 1.5rem;
+  max-width: 500px;
+  width: 90%;
+}
+
+.modal h2 {
+  margin-bottom: 1rem;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+/* Responsive */
+@media (max-width: 1024px) {
+  main {
+    grid-template-columns: 1fr;
+  }
+
+  .sidebar, .info-panel {
+    display: none;
+  }
+}
+
+/* Animations */
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.processing {
+  animation: pulse 1s infinite;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.fade-in {
+  animation: fadeIn 0.3s ease-out;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-dark);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-dim);
+}
